@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Verificador de Senha</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+            <h1 class="text-2xl font-bold mb-4 text-center text-gray-800">Verifique sua senha</h1>
+            <form id="passwordForm" class="space-y-4">
+                <label for="password" class="block text-gray-700 font-semibold">Senha:</label>
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    required
+                    class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Digite sua senha"
+                    />
+                <button
+                    type="submit"
+                    class="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 transition"
+                    >
+                    Consultar
+                </button>
+            </form>
+
+            <div id="result" class="mt-6 p-4 rounded-md hidden"></div>
+        </div>
+
+        <script>
+            const form = document.getElementById('passwordForm');
+            const resultDiv = document.getElementById('result');
+
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                resultDiv.classList.add('hidden');
+                resultDiv.textContent = '';
+
+                const password = form.password.value.trim();
+                if (!password)
+                    return;
+
+                resultDiv.classList.remove('hidden');
+                resultDiv.textContent = 'Consultando...';
+                resultDiv.className = 'mt-6 p-4 rounded-md bg-yellow-100 text-yellow-800';
+
+                try {
+                    const response = await fetch('http://localhost/pwcheck/api.php', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({password}),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Erro na requisição: ' + response.status);
+                    }
+
+                    const data = await response.json();
+
+                    if (data.error) {
+                        resultDiv.textContent = `Erro: ${data.error}`;
+                        resultDiv.className = 'mt-6 p-4 rounded-md bg-red-100 text-red-700';
+                        return;
+                    }
+
+                    if (data.leaked) {
+                        resultDiv.innerHTML = `
+                  <p class="font-semibold text-red-700">Senha vazada!</p>
+                  <p>Esta senha apareceu <strong>${data.count}</strong> vezes em vazamentos.</p>
+                  <p>Recomenda-se trocar a senha imediatamente.</p>
+                `;
+                        resultDiv.className = 'mt-6 p-4 rounded-md bg-red-100 text-red-700';
+                    } else {
+                        resultDiv.innerHTML = `
+                  <p class="font-semibold text-green-700">Senha segura!</p>
+                  <p>Não foi encontrada esta senha nos bancos de dados de vazamento.</p>
+                `;
+                        resultDiv.className = 'mt-6 p-4 rounded-md bg-green-100 text-green-700';
+                    }
+                } catch (error) {
+                    resultDiv.textContent = 'Erro ao consultar a API: ' + error.message;
+                    resultDiv.className = 'mt-6 p-4 rounded-md bg-red-100 text-red-700';
+                }
+            });
+        </script>
+    </body>
+</html>
